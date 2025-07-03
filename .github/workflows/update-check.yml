@@ -15,7 +15,7 @@ jobs:
           submodules: true
 
       - name: Install pip tools
-        run: pip install PyYAML yq
+        run: pip install PyYAML yq requirements-parser toml aiohttp
 
       - name: Fetch latest releases
         run: |
@@ -31,18 +31,20 @@ jobs:
           echo CURRENT_TAG=$(python -m yq -r '.modules[-1].sources[0].tag' org.mozilla.vpn.yml) >> $GITHUB_ENV
           echo LATEST_TAG=$(git ls-remote --tags --sort="version:refname" ${UPSTREAM_URL} | cut -d/ -f3 | tail -1) >> $GITHUB_ENV
 
-      - name: Setup commit
-        if: ${{ github.env.LATEST_TAG == github.env.APPSTREAM_TAG && github.env.LATEST_TAG != github.env.CURRENT_TAG }}
+      - name: Update flatpak manifests
         run: |
           python -m yq -yi ".modules[-1].sources[0].tag = \"${LATEST_TAG}\"" org.mozilla.vpn.yml
-          git add org.mozilla.vpn.yml org.mozilla.vpn.releases.xml
+          ./flatpak-update-crates.sh
+
+          git status
 
       - name: Create Pull Request
-        if: ${{ github.env.LATEST_TAG == github.env.APPSTREAM_TAG && github.env.LATEST_TAG != github.env.CURRENT_TAG }}
+        #if: ${{ github.env.LATEST_TAG == github.env.APPSTREAM_TAG && github.env.LATEST_TAG != github.env.CURRENT_TAG }}
         uses: peter-evans/create-pull-request@v7
         with:
           commit-message: "Upstream release ${{ github.env.LATEST_TAG }}"
           author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
           add-paths: |
+            flatpak-vpn-crates.json
             org.mozilla.vpn.releases.xml
             org.mozilla.vpn.yml
