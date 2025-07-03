@@ -33,16 +33,18 @@ jobs:
 
       - name: Update flatpak manifests
         run: |
-          python -m yq -yi ".modules[-1].sources[0].tag = \"${LATEST_TAG}\"" org.mozilla.vpn.yml
+          TAG_LINE_NUM=$(sed -n '/\s*tag:/=' org.mozilla.vpn.yml | tail -1)
+          sed -i "$TAG_LINE_NUM s/tag:.*/tag: ${LATEST_TAG}/g" org.mozilla.vpn.yml
+
           ./flatpak-update-crates.sh
 
-          git status
-
       - name: Create Pull Request
-        #if: ${{ github.env.LATEST_TAG == github.env.APPSTREAM_TAG && github.env.LATEST_TAG != github.env.CURRENT_TAG }}
+        #if: ${{ env.LATEST_TAG == env.APPSTREAM_TAG && env.LATEST_TAG != env.CURRENT_TAG }}
         uses: peter-evans/create-pull-request@v7
         with:
-          commit-message: "Upstream release ${{ github.env.LATEST_TAG }}"
+          branch: upstream-release-${{ env.LATEST_TAG }}
+          commit-message: "Upstream release ${{ env.LATEST_TAG }}"
+          title: "Upstream release ${{ env.LATEST_TAG }}"
           author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
           add-paths: |
             flatpak-vpn-crates.json
