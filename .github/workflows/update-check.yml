@@ -58,3 +58,55 @@ jobs:
             [1]: ${{ env.APPSTREAM_URL }}
             [2]: https://github.com/peter-evans/create-pull-request
 
+  beta-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          ref: beta
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+          cache: pip
+      - run: pip install -r .github/requirements.txt
+    
+      - name: Find latest release branch
+        run: |
+          UPSTREAM_URL=$(python -m yq -r '.modules[-1].sources[0].url' org.mozilla.vpn.yml)
+          RELEASE_INFO=$(git ls-remote --branches --sort="version:refname" ${UPSTREAM_URL} 'refs/heads/releases/*' | tail -1)
+          echo LATEST_TAG=v$(echo "${RELEASE_INFO}" | cut -d/ -f4) >> $GITHUB_ENV
+          echo LATEST_SHA=$(echo "${RELEASE_INFO}" | awk '{print $1}') >> $GITHUB_ENV
+          echo LATEST_URL=${UPSTREAM_URL}/commits/releases/$(echo "${RELEASE_INFO}" | cut -d/ -f4) >> $GITHUB_ENV
+          echo CURRENT_SHA=$(python -m yq -r '.modules[-1].sources[0].commit' org.mozilla.vpn.yml) >> $GITHUB_ENV
+
+      - name: Update flatpak manifests
+        run: |
+          COMMIT_LINE_NUM=$(sed -n '/\s*commit:/=' org.mozilla.vpn.yml | tail -1)
+          sed -i "$COMMIT_LINE_NUM s/commit:.*/commit: ${LATEST_SHA}/g" org.mozilla.vpn.yml
+
+          curl -sSL -o org.mozilla.vpn.releases.xml \
+            https://mozilla.github.io/mozillavpn-product-details/org.mozilla.vpn.releases.xml
+
+          ./flatpak-update-crates.sh
+
+      - name: Create Pull Request
+        if: ${{ env.LATEST_SHA != env.CURRENT_SHA }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: release-candidate-${{ env.LATEST_TAG }}
+          commit-message: "Beta release ${{ env.LATEST_TAG }}"
+          title: "Beta release ${{ env.LATEST_TAG }}"
+          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          add-paths: |
+            flatpak-vpn-crates.json
+            org.mozilla.vpn.releases.xml
+            org.mozilla.vpn.yml
+          body: |
+            Automated update created by [create-pull-request][2] to version [${{ env.LATEST_TAG }}][1]
+
+            [1]: ${{ env.LATEST_URL }}
+            [2]: https://github.com/peter-evans/create-pull-request
