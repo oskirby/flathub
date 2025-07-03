@@ -1,0 +1,43 @@
+name: Check for updates
+on:
+  schedule:
+    - cron: '0 14 * * *' # Run daily at 14:00
+  workflow_dispatch: {}
+
+jobs:
+  update-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install pip tools
+        run: pip install PyYAML yq
+
+      - name: Fetch latest releases
+        run: |
+          curl -sSL -o org.mozilla.vpn.releases.xml \
+            https://mozilla.github.io/mozillavpn-product-details/org.mozilla.vpn.releases.xml
+
+      - name: Parse release tags
+        run: |
+          UPSTREAM_URL=$(python -m yq '.modules[-1].sources[0].url' org.mozilla.vpn.yml)
+          echo CURRENT_TAG=$(python -m yq '.modules[-1].sources[0].tag' org.mozilla.vpn.yml) >> $GITHUB_ENV
+          echo APPSTREAM_TAG=v$(xmllint --xpath "string(//releases/release/@version)" org.mozilla.vpn.releases.xml) >> $GITHUB_ENV
+          echo LATEST_TAG=$(git ls-remote --tags ${UPSTREAM_URL} | awk '{print $2}' | cut -d/ -f3 | sort --version-sort | tail -1) >> $GITHUB_ENV
+
+      - name: Setup commit
+        if: ${{ github.env.LATEST_TAG == github.env.APPSTREAM_TAG && github.env.LATEST_TAG != github.env.CURRENT_TAG }}
+        run: |
+          python -m yq -yi ".modules[-1].sources[0].tag = \"${LATEST_TAG}\"" org.mozilla.vpn.yml
+          git add org.mozilla.vpn.yml org.mozilla.vpn.releases.xml
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "Upstream release ${{ github.env.LATEST_TAG }}"
+          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          add-paths: |
+            org.mozilla.vpn.releases.xml
+            org.mozilla.vpn.yml
