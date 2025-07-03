@@ -3,9 +3,11 @@ on:
   push:
     branches:
       - org.mozilla.vpn
+      - beta
   pull_request:
     branches:
       - org.mozilla.vpn
+      - beta
 
 jobs:
   linters:
