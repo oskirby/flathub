@@ -43,7 +43,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/mozilla-mobile/mozilla-vpn-client
-        commit: 9be18451b91bf8d035fc6794901c0f51dce5ad5e
+        commit: 43a100a37d1ce422f3e073768affa03ad4488744
 
       # Install vendored Rust crates
       - flatpak-vpn-crates.json
