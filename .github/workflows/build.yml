@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Build
         uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
