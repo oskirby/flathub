@@ -14,16 +14,18 @@ jobs:
         with:
           submodules: true
 
-      - name: Install pip tools
-        run: pip install PyYAML yq requirements-parser toml aiohttp
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+          cache: pip
+      - run: pip install -r .github/requirements.txt
 
-      - name: Fetch latest releases
+      - name: Fetch latest release data
         run: |
           curl -sSL -o org.mozilla.vpn.releases.xml \
             https://mozilla.github.io/mozillavpn-product-details/org.mozilla.vpn.releases.xml
 
-          echo -n APPSTREAM_TAG=v >> $GITHUB_ENV
-          python -c 'import xml.etree.ElementTree as ET; print(ET.parse("org.mozilla.vpn.releases.xml").find("release").attrib["version"])' >> $GITHUB_ENV
+          python .github/parse-appstream-releases.py org.mozilla.vpn.releases.xml >> $GITHUB_ENV
 
       - name: Parse release tags
         run: |
@@ -39,7 +41,7 @@ jobs:
           ./flatpak-update-crates.sh
 
       - name: Create Pull Request
-        #if: ${{ env.LATEST_TAG == env.APPSTREAM_TAG && env.LATEST_TAG != env.CURRENT_TAG }}
+        if: ${{ env.LATEST_TAG == env.APPSTREAM_TAG && env.LATEST_TAG != env.CURRENT_TAG }}
         uses: peter-evans/create-pull-request@v7
         with:
           branch: upstream-release-${{ env.LATEST_TAG }}
@@ -50,3 +52,9 @@ jobs:
             flatpak-vpn-crates.json
             org.mozilla.vpn.releases.xml
             org.mozilla.vpn.yml
+          body: |
+            Automated update created by [create-pull-request][2] to version [${{ env.APPSTREAM_URL }}][1]
+
+            [1]: ${{ env.APPSTREAM_URL }}
+            [2]: https://github.com/peter-evans/create-pull-request
+
