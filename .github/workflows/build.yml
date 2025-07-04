@@ -14,12 +14,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  linters:
+    name: "Run linters"
+    container:
+      image: ghcr.io/flathub/flatpak-builder-lint:latest
+      options: --privileged
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Run manifest linters
+        run: flatpak-builder-lint manifest org.mozilla.vpn.yml
+
+      - name: Run Appstream linters
+        run: flatpak-builder-lint appstream org.mozilla.vpn.metainfo.xml
+
   build:
     name: "Build Flatpak"
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.8
       options: --privileged
     strategy:
+      fail-fast: false
       matrix:
         variant:
           - arch: x86_64
@@ -41,3 +61,7 @@ jobs:
           manifest-path: org.mozilla.vpn.yml
           arch: ${{ matrix.variant.arch }}
           cache-key: flatpak-builder-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+
+      - name: Run builddir linters
+        continue-on-error: true
+        run: flatpak-builder-lint builddir flatpak_app
