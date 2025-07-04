@@ -1,0 +1,34 @@
+name: Run Flatpak Linters
+on:
+  push:
+    branches:
+      - master
+      - beta
+  pull_request:
+    branches:
+      - master
+      - beta
+
+jobs:
+  linters:
+    name: "Run Linters"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Flatpak Linting Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install flatpak flatpak-builder -y
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user flathub -y org.flatpak.Builder
+
+      - name: Run Manifest Linters
+        run: flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest org.mozilla.vpn.yml
+
+      - name: Run Appstream Linters
+        run: flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream org.mozilla.vpn.metainfo.xml
