@@ -19,18 +19,8 @@ build-options:
   env:
     - CARGO_HOME=/run/build/rust-flatpak/cargo
 modules:
-  - name: python3-maturin
-    buildsystem: simple
-    build-commands:
-      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-          --prefix=${FLATPAK_DEST} "maturin" --no-build-isolation
-    sources:
-      - type: file
-        url: https://files.pythonhosted.org/packages/8e/99/634aa686a41f899b39300c28ecca756974609e65e80e7a1b7a77765bd070/maturin-1.9.0-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.musllinux_1_1_x86_64.whl
-        sha256: 35a506c3139d6847edd160f99fd0da7c7b2bbb4d53e0fef995479eed3a92ac37
-    cleanup:
-      - '*'
-
+  # Build dependency for jsonschema/glean-parser, needs to be installed from
+  # a binary wheel because it has a bunch of complex rust dependencies.
   - name: python3-rpds
     buildsystem: simple
     build-commands:
