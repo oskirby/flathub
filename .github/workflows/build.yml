@@ -16,11 +16,18 @@ concurrency:
 jobs:
   build:
     name: "Build Flatpak"
-    runs-on: ubuntu-latest
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.8
       options: --privileged
+    strategy:
+      matrix:
+        variant:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
 
+    runs-on: ${{ matrix.variant.runner }}
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -32,4 +39,5 @@ jobs:
         with:
           bundle: mozillavpn.flatpak
           manifest-path: org.mozilla.vpn.yml
+          arch: ${{ matrix.variant.arch }}
           cache-key: flatpak-builder-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
