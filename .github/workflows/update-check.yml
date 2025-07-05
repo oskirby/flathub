@@ -34,11 +34,11 @@ jobs:
         working-directory: manifest
         id: check-release
         run: |
-          if git diff ${{ matrix.branch }} --exit-code org.mozilla.vpn.yml; then
+          if ! git diff ${{ matrix.branch }} --exit-code org.mozilla.vpn.yml; then
             echo "updated=true" >> $GITHUB_OUTPUT
             echo "upstream-ref=$(.github/parse-git-ref.py --module mozillavpn org.mozilla.vpn.yml)" >> $GITHUB_OUTPUT
           else
-            echo "updated=false"
+            echo "updated=false" >> $GITHUB_OUTPUT
           fi
 
       - uses: actions/setup-python@v5
