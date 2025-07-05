@@ -15,51 +15,54 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
         with:
+          submodules: true
           path: manifest
           ref: ${{ matrix.branch }}
 
-      - name: Parse current upstream
-        id: current-upstream
-        run: echo "ref=$(./manifest/.github/parse-git-ref.py --module mozillavpn manifest/org.mozilla.vpn.yml)" >> $GITHUB_OUTPUT
-
-      - name: Check for updates
+      - name: Run external data checker
         uses: docker://ghcr.io/flathub/flatpak-external-data-checker:latest
         with:
           args: --update --edit-only --never-fork manifest/org.mozilla.vpn.yml
 
-      - name: Check for new upstream and reset
+      - name: Check for updates and reset
         working-directory: manifest
-        id: latest-upstream
+        id: check-updates
         run: |
-          REF=$(.github/parse-git-ref.py --module mozillavpn org.mozilla.vpn.yml)
-          if [ "${REF}" != "${{ steps.current-upstream.outputs.ref }}" ]; then
-            echo "updated=true" >> $GITHUB_OUTPUT
+          UPSTREAM_REF=$(.github/parse-git-ref.py --module mozillavpn org.mozilla.vpn.yml)
+          echo "upstream-ref=${UPSTREAM_REF}" >> $GITHUB_OUTPUT
+          if ! git diff --exit-code org.mozilla.vpn.yml; then
+            echo "updates=true" >> $GITHUB_OUTPUT
           fi
-          echo "ref=${REF}" >> $GITHUB_OUTPUT
-          git checkout --
+
+          git checkout -- org.mozilla.vpn.yml
+          CURRENT_REF=$(.github/parse-git-ref.py --module mozillavpn org.mozilla.vpn.yml)
+          echo "current-ref=${CURRENT_REF}" >> $GITHUB_OUTPUT
+          if [ "${CURRENT_REF}" != "${UPSTREAM_REF}" ]; then
+            echo "upstream=true" >> $GITHUB_OUTPUT
+          fi
 
       - uses: actions/setup-python@v5
-        if: steps.latest-upstream.outputs.updated == 'true'
+        if: steps.check-updates.outputs.upstream == 'true'
         with:
           python-version: 3.12
           cache: pip
       - run: pip install -r .github/requirements.txt
         working-directory: manifest
-        if: steps.latest-upstream.outputs.updated == 'true'
+        if: steps.check-updates.outputs.upstream == 'true'
 
       - name: Checkout upstream
-        if: steps.latest-upstream.outputs.updated == 'true'
+        if: steps.check-updates.outputs.upstream == 'true'
         uses: actions/checkout@v4
         with:
           path: upstream
           repository: mozilla-mobile/mozilla-vpn-client
-          ref: ${{ steps.latest-upstream.outputs.ref }}
+          ref: ${{ steps.check-updates.outputs.upstream-ref }}
           sparse-checkout: |
             Cargo.lock
             requirements.in
 
       - name: Checkout tools
-        if: steps.latest-upstream.outputs.updated == 'true'
+        if: steps.check-updates.outputs.upstream == 'true'
         uses: actions/checkout@v4
         with:
           path: tools
@@ -67,12 +70,13 @@ jobs:
           ref: master
 
       - name: Update dependencies
-        if: steps.latest-upstream.outputs.updated == 'true'
+        if: steps.check-updates.outputs.upstream == 'true'
         run: |
           python tools/cargo/flatpak-cargo-generator.py -o manifest/flatpak-vpn-crates.json upstream/Cargo.lock
           python tools/pip/flatpak-pip-generator.py -o manifest/flatpak-glean-parser.yaml --yaml --build-only $(cat upstream/requirements.in | grep ^glean-parser)
 
       - uses: docker://ghcr.io/flathub/flatpak-external-data-checker:latest
+        if: steps.check-updates.outputs.updates == 'true'
         env:
           GIT_AUTHOR_NAME: Flatpak External Data Checker
           GIT_COMMITTER_NAME: Flatpak External Data Checker
