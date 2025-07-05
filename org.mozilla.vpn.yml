@@ -122,12 +122,11 @@ modules:
     sources:
       - type: git
         url: https://github.com/mozilla-mobile/mozilla-vpn-client
-        branch: main
-        commit: 5e682a34c6718a6e0f0ddba8467e8c71c1bc19d6
+        commit: bb7d5d6298496b1d069193c2b60067f1f84834d3
         x-checker-data:
           type: json
-          url: https://api.github.com/repos/mozilla-mobile/mozilla-vpn-client/branches/main 
-          commit-query: .commit.sha
+          url: https://api.github.com/repos/mozilla-mobile/mozilla-vpn-client/branches?protected=true
+          commit-query: map(select(.name | startswith("releases/")))[-1].commit.sha
 
       # Install vendored Rust crates
       - flatpak-vpn-crates.json
