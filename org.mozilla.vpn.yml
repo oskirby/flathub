@@ -125,7 +125,9 @@ modules:
         branch: main
         commit: 5e682a34c6718a6e0f0ddba8467e8c71c1bc19d6
         x-checker-data:
-          type: git
+          type: json
+          url: https://api.github.com/repos/mozilla-mobile/mozilla-vpn-client/branches/main 
+          commit-query: .commit.sha
 
       # Install vendored Rust crates
       - flatpak-vpn-crates.json
