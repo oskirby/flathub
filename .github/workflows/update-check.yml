@@ -28,3 +28,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --update --never-fork org.mozilla.vpn.yml
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+          cache: pip
+      - run: pip install -r .github/requirements.txt
+
+      - name: Update dependencies
+        run: |
+          ./flatpak-update-crates.sh
+          git status
