@@ -7,6 +7,13 @@ on:
 jobs:
   update-check:
     runs-on: ubuntu-latest
+    env:
+      GIT_AUTHOR_NAME: Flatpak External Data Checker
+      GIT_COMMITTER_NAME: Flatpak External Data Checker
+      # email sets "github-actions[bot]" as commit author, see https://github.community/t/github-actions-bot-email-address/17204/6
+      GIT_AUTHOR_EMAIL: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+      GIT_COMMITTER_EMAIL: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     strategy:
       matrix:
@@ -24,13 +31,6 @@ jobs:
         run: echo "ref=$(./manifest/.github/parse-git-ref.py --module mozillavpn manifest/org.mozilla.vpn.yml)" >> $GITHUB_OUTPUT
 
       - uses: docker://ghcr.io/flathub/flatpak-external-data-checker:latest
-        env:
-          GIT_AUTHOR_NAME: Flatpak External Data Checker
-          GIT_COMMITTER_NAME: Flatpak External Data Checker
-          # email sets "github-actions[bot]" as commit author, see https://github.community/t/github-actions-bot-email-address/17204/6
-          GIT_AUTHOR_EMAIL: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
-          GIT_COMMITTER_EMAIL: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --update --commit-only --never-fork manifest/org.mozilla.vpn.yml
 
@@ -75,9 +75,11 @@ jobs:
         run: |
           python tools/cargo/flatpak-cargo-generator.py -o manifest/flatpak-vpn-crates.json upstream/Cargo.lock
           python tools/pip/flatpak-pip-generator.py -o manifest/flatpak-glean-parser.yaml --yaml --build-only $(cat upstream/requirements.in | grep ^glean-parser)
+          if ! git -C manifest diff --exit-code; then
+            git -C manifest add flatpak-glean-parser.yaml flatpak-vpn-crates.json
+            git -C manifest commit -m "Update upstream dependencies"
 
-          git -C manifest add flatpak-glean-parser.yaml flatpak-vpn-crates.json
-          git -C manifest commit --amend --reuse-message HEAD
+            # See what we created...
+            git -C manifest format-patch --stdout HEAD~1
+          fi
 
-          # See what we created...
-          git -C manifest format-patch --stdout HEAD~1
