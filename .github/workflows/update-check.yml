@@ -19,6 +19,10 @@ jobs:
           path: manifest
           ref: ${{ matrix.branch }}
 
+      - name: Parse current upstream
+        id: current-upstream
+        run: echo "ref=$(./manifest/.github/parse-git-ref.py --module mozillavpn manifest/org.mozilla.vpn.yml)" >> $GITHUB_OUTPUT
+
       - uses: docker://ghcr.io/flathub/flatpak-external-data-checker:latest
         env:
           GIT_AUTHOR_NAME: Flatpak External Data Checker
@@ -30,38 +34,36 @@ jobs:
         with:
           args: --update --commit-only --never-fork manifest/org.mozilla.vpn.yml
 
-      - name: Check for new release
-        working-directory: manifest
-        id: check-release
+      - name: Check for new upstream
+        id: latest-upstream
         run: |
-          if ! git diff ${{ matrix.branch }} --exit-code org.mozilla.vpn.yml; then
+          REF=$(./manifest/.github/parse-git-ref.py --module mozillavpn manifest/org.mozilla.vpn.yml)
+          if [ "${REF}" != "${{ steps.current-upstream.outputs.ref }}" ]; then
             echo "updated=true" >> $GITHUB_OUTPUT
-            echo "upstream-ref=$(.github/parse-git-ref.py --module mozillavpn org.mozilla.vpn.yml)" >> $GITHUB_OUTPUT
-          else
-            echo "updated=false" >> $GITHUB_OUTPUT
           fi
+          echo "ref=${REF}" >> $GITHUB_OUTPUT
 
       - uses: actions/setup-python@v5
-        if: steps.check-release.outputs.updated == 'true'
+        if: steps.latest-upstream.outputs.updated == 'true'
         with:
           python-version: 3.11
           cache: pip
       - run: pip install -r .github/requirements.txt
-        if: steps.check-release.outputs.updated == 'true'
+        if: steps.latest-upstream.outputs.updated == 'true'
 
       - name: Checkout upstream
-        if: steps.check-release.outputs.updated == 'true'
+        if: steps.latest-upstream.outputs.updated == 'true'
         uses: actions/checkout@v4
         with:
           path: upstream
           repository: mozilla-vpn/mozilla-vpn-client
-          ref: ${{ steps.check-release.outputs.upstream-ref }}
+          ref: ${{ steps.latest-upstream.outputs.ref }}
           sparse-checkout: |
             Cargo.lock
             requirements.in
 
       - name: Checkout tools
-        if: steps.check-release.outputs.updated == 'true'
+        if: steps.latest-upstream.outputs.updated == 'true'
         uses: actions/checkout@v4
         with:
           path: tools
@@ -69,7 +71,7 @@ jobs:
           ref: master
 
       - name: Update dependencies
-        if: steps.check-release.outputs.updated == 'true'
+        if: steps.latest-upstream.outputs.updated == 'true'
         run: |
           python tools/cargo/flatpak-cargo-generator.py -o manifest/flatpak-vpn-crates.json upstream/Cargo.lock
           python tools/pip/flatpak-pip-generator.py -o manifest/flatpak-glean-parser.yaml --yaml --build-only $(cat upstream/requirements.in | grep glean-parser)
