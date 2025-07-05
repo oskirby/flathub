@@ -48,7 +48,7 @@ jobs:
         with:
           python-version: 3.11
           cache: pip
-      - run: pip install -r .github/requirements.txt
+      - run: pip install -r manifest/.github/requirements.txt
         if: steps.latest-upstream.outputs.updated == 'true'
 
       - name: Checkout upstream
@@ -75,4 +75,4 @@ jobs:
         run: |
           python tools/cargo/flatpak-cargo-generator.py -o manifest/flatpak-vpn-crates.json upstream/Cargo.lock
           python tools/pip/flatpak-pip-generator.py -o manifest/flatpak-glean-parser.yaml --yaml --build-only $(cat upstream/requirements.in | grep glean-parser)
-          git status
+          git -C manifest status
