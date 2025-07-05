@@ -75,4 +75,9 @@ jobs:
         run: |
           python tools/cargo/flatpak-cargo-generator.py -o manifest/flatpak-vpn-crates.json upstream/Cargo.lock
           python tools/pip/flatpak-pip-generator.py -o manifest/flatpak-glean-parser.yaml --yaml --build-only $(cat upstream/requirements.in | grep ^glean-parser)
-          git -C manifest status
+
+          git -C manifest add flatpak-glean-parser.yaml flatpak-vpn-crates.json
+          git -C manifest commit --amend --reuse-message HEAD
+
+          # See what we created...
+          git -C manifest format-patch --stdout HEAD~1
