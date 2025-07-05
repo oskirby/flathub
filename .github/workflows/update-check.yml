@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        branch: [ main ]
+        branch: [ main, beta ]
 
     steps:
       - name: Checkout sources
@@ -85,4 +85,4 @@ jobs:
           GIT_COMMITTER_EMAIL: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: --update --never-fork manifest/org.mozilla.vpn.yml
+          args: --update --never-fork manifest/org.mozilla.vpn.yml --pr-labels ${{ matrix.branch }}
