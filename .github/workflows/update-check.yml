@@ -56,7 +56,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: upstream
-          repository: mozilla-vpn/mozilla-vpn-client
+          repository: mozilla-mobile/mozilla-vpn-client
           ref: ${{ steps.latest-upstream.outputs.ref }}
           sparse-checkout: |
             Cargo.lock
