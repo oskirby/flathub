@@ -1,0 +1,19 @@
+name: automerge
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches:
+      - main
+      - beta
+
+jobs:
+  automerge:
+    name: "Enable automerge"
+    environment: Flathub Update Checks
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, github.ref) }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.UPDATE_TOKEN }}
+
+    steps:
+      - run: gh pr merge --auto --squash ${{ github.event.pull_request.url }}
