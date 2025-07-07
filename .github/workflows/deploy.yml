@@ -1,0 +1,13 @@
+name: Deploy Flatpak Repo
+on:
+  workflow_run:
+    workflows: [Build Flatpak Packages]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - run: echo "Workflow run ${{ github.event.workflow_run.display_title }} succeeded"
