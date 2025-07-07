@@ -30,7 +30,7 @@ jobs:
           submodules: true
 
       - name: Run manifest linters
-        run: flatpak-builder-lint manifest org.mozilla.vpn.yml
+        run: flatpak-builder-lint --exceptions --user-exceptions .github/linter-exceptions.json manifest org.mozilla.vpn.yml
 
       - name: Run Appstream linters
         run: flatpak-builder-lint appstream org.mozilla.vpn.metainfo.xml
