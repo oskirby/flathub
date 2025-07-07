@@ -17,16 +17,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
-          path: manifest
           ref: ${{ matrix.branch }}
 
       - name: Run external data checker
         uses: docker://ghcr.io/flathub/flatpak-external-data-checker:latest
         with:
-          args: --update --edit-only --never-fork manifest/org.mozilla.vpn.yml
+          args: --update --edit-only --never-fork org.mozilla.vpn.yml
 
       - name: Check for updates and reset
-        working-directory: manifest
         id: check-updates
         run: |
           UPSTREAM_REF=$(.github/parse-git-ref.py --module mozillavpn org.mozilla.vpn.yml)
@@ -48,7 +46,6 @@ jobs:
           python-version: 3.12
           cache: pip
       - run: pip install -r .github/requirements.txt
-        working-directory: manifest
         if: steps.check-updates.outputs.upstream == 'true'
 
       - name: Checkout upstream
@@ -73,8 +70,8 @@ jobs:
       - name: Update dependencies
         if: steps.check-updates.outputs.upstream == 'true'
         run: |
-          python tools/cargo/flatpak-cargo-generator.py -o manifest/flatpak-vpn-crates.json upstream/Cargo.lock
-          python tools/pip/flatpak-pip-generator.py -o manifest/flatpak-glean-parser.yaml --yaml --build-only $(cat upstream/requirements.in | grep ^glean-parser)
+          python tools/cargo/flatpak-cargo-generator.py -o flatpak-vpn-crates.json upstream/Cargo.lock
+          python tools/pip/flatpak-pip-generator.py -o flatpak-glean-parser.yaml --yaml --build-only $(cat upstream/requirements.in | grep ^glean-parser)
 
       - uses: docker://ghcr.io/flathub/flatpak-external-data-checker:latest
         if: steps.check-updates.outputs.updates == 'true'
@@ -86,11 +83,10 @@ jobs:
           GIT_COMMITTER_EMAIL: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
           GITHUB_TOKEN: ${{ secrets.UPDATE_TOKEN }}
         with:
-          args: --update --never-fork manifest/org.mozilla.vpn.yml --pr-labels ${{ matrix.branch }}
+          args: --update --never-fork org.mozilla.vpn.yml --pr-labels ${{ matrix.branch }}
 
       - name: Set automerge
         if: steps.check-updates.outputs.upstream == 'true'
-        working-directory: manifest
         env:
           GH_TOKEN: ${{ secrets.UPDATE_TOKEN }}
         run: |
