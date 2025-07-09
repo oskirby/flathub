@@ -115,12 +115,14 @@ jobs:
 
       - name: Import repositories
         run: |
+          find $(pwd)
+
           mkdir -p outputs/repo
           ostree init --mode=archive-z2 --repo=outputs/repo
 
           for ARCH in x86_64 aarch64; do
             mkdir repo-${ARCH}
-            tar xf mozillavpn-repo-${ARCH}.tar.xz -C repo-${ARCH}
+            tar xf mozillavpn-repo-${ARCH}.tar.xz -C repo-${ARCH} --strip-components=1
             ostree pull-local --repo=outputs/repo repo-${ARCH} $(ostree refs --repo=repo-${ARCH})
           done
 
