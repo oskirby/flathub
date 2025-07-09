@@ -37,6 +37,7 @@ jobs:
 
   build:
     name: "Build Flatpak"
+    environment: ${{ github.event_name == 'push' && 'Test Repo Deployment' }}
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.9
       options: --privileged
@@ -56,13 +57,40 @@ jobs:
         with:
           submodules: true
 
+      - name: Import signing keys
+        if: ${{ github.event_name == 'push' }}
+        id: keys
+        shell: bash
+        env:
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+          GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
+          GNUPGHOME: ${{ runner.temp }}/gnupg-data
+        run: |
+          mkdir -m700 $GNUPGHOME
+          echo "allow-preset-passphrase" > $GNUPGHOME/gpg-agent.conf
+          gpgconf --kill gpg-agent
+
+          echo "$GPG_PRIVATE_KEY" | gpg --import --batch
+          KEYID=$(gpg --with-colons --list-keys | grep -m1 '^fpr:' | tr -d [fpr:])
+          KEYGRIP=$(gpg --with-colons --with-keygrip --list-keys | grep -m1 '^grp:' | tr -d [grp:])
+          echo "$GPG_PASSWORD" | /lib/gnupg2/gpg-preset-passphrase --preset $KEYGRIP
+
+          echo "keyid=$KEYID" >> $GITHUB_OUTPUT
+
       - name: Build
         uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
         with:
           bundle: mozillavpn.flatpak
           manifest-path: org.mozilla.vpn.yml
           arch: ${{ matrix.variant.arch }}
+          gpg-sign: ${{ steps.keys.outputs.keyid }}
           cache-key: flatpak-builder-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+
+      - name: Upload repository
+        uses: actions/upload-artifact@v4
+        with:
+          names: mozillavpn-repo-${{ matrix.variant.arch }}
+          path: repo
 
       - name: Run builddir linters
         continue-on-error: true
