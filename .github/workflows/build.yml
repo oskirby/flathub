@@ -37,7 +37,7 @@ jobs:
 
   build:
     name: "Build Flatpak"
-    environment: ${{ github.event_name == 'push' && 'Test Repo Deployment' }}
+    environment: ${{ github.event_name == 'push' && 'Test Repo Deployment' || '' }}
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.9
       options: --privileged
@@ -89,9 +89,57 @@ jobs:
       - name: Upload repository
         uses: actions/upload-artifact@v4
         with:
-          names: mozillavpn-repo-${{ matrix.variant.arch }}
+          name: mozillavpn-repo-${{ matrix.variant.arch }}
           path: repo
 
       - name: Run builddir linters
         continue-on-error: true
         run: flatpak-builder-lint builddir flatpak_app
+
+  build-repository:
+    name: "Build repository"
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download aarch64 repository
+        uses: actions/download-artifact@v4
+        with:
+          name: mozillavpn-repo-aarch64
+          path: repo-aarch64
+
+      - name: Download x86_64 repository
+        uses: actions/download-artifact@v4
+        with:
+          name: mozillavpn-repo-x86_64
+          path: repo-x86_64     
+
+      - name: Import repositories
+        run: |
+          mkdir -p outputs/repo
+          ostree init --repo=outputs/repo --type=archive-z2
+          ostree pull-local --repo=outputs/repo ./repo-aarch64 $(ostree refs --repo=repo-aarch64)
+          ostree pull-local --repo=outputs/repo ./repo-x86_64 $(ostree refs --repo=repo-x86_64)
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: output
+
+  deploy-repository:
+    name: "Deploy repository"
+    needs: build-repository
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+        id: deployment
+      
+    
