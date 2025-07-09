@@ -113,10 +113,15 @@ jobs:
           name: mozillavpn-repo-x86_64
           path: repo-x86_64     
 
+      - name: Install ostree tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ostree
+
       - name: Import repositories
         run: |
           mkdir -p outputs/repo
-          ostree init --repo=outputs/repo --type=archive-z2
+          ostree init --mode=archive-z2 --repo=outputs/repo
           ostree pull-local --repo=outputs/repo ./repo-aarch64 $(ostree refs --repo=repo-aarch64)
           ostree pull-local --repo=outputs/repo ./repo-x86_64 $(ostree refs --repo=repo-x86_64)
 
