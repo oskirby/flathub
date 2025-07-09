@@ -66,6 +66,9 @@ jobs:
           GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
           GNUPGHOME: ${{ runner.temp }}/gnupg-data
         run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gpg-agent
+
           mkdir -m700 $GNUPGHOME
           echo "allow-preset-passphrase" > $GNUPGHOME/gpg-agent.conf
           gpgconf --kill gpg-agent
