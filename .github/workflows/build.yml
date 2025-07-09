@@ -92,9 +92,9 @@ jobs:
       - name: Upload repository
         uses: actions/upload-artifact@v4
         with:
-          name: mozillavpn-repo-${{ matrix.variant.arch }}.tar.xz
+          name: mozillavpn-repo-${{ matrix.variant.arch }}
           compression-level: 0
-          path: repo
+          path: mozillavpn-repo-${{ matrix.variant.arch }}.tar.xz
 
       - name: Run builddir linters
         continue-on-error: true
@@ -120,7 +120,7 @@ jobs:
 
           for ARCH in x86_64 aarch64; do
             mkdir repo-${ARCH}
-            tar -C repo-${ARCH} --strip-components=1 xf mozillavpn-repo-${{ matrix.variant.arch }}.tar.xz
+            tar xf mozillavpn-repo-${ARCH}.tar.xz -C repo-${ARCH}
             ostree pull-local --repo=outputs/repo repo-${ARCH} $(ostree refs --repo=repo-${ARCH})
           done
 
