@@ -63,20 +63,12 @@ jobs:
         shell: bash
         env:
           GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
-          GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
           GNUPGHOME: ${{ runner.temp }}/gnupg-data
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gpg-agent
-
           mkdir -m700 $GNUPGHOME
-          echo "allow-preset-passphrase" > $GNUPGHOME/gpg-agent.conf
-          gpgconf --kill gpg-agent
-
           echo "$GPG_SIGNING_KEY" | gpg --import --batch
           KEYID=$(gpg --with-colons --list-keys | grep -m1 '^fpr:' | tr -d [fpr:])
           KEYGRIP=$(gpg --with-colons --with-keygrip --list-keys | grep -m1 '^grp:' | tr -d [grp:])
-          echo "$GPG_PASSWORD" | /lib/gnupg2/gpg-preset-passphrase --preset $KEYGRIP
 
           echo "keyid=$KEYID" >> $GITHUB_OUTPUT
 
