@@ -109,10 +109,16 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Checkout manifest
+        uses: actions/checkout@v4
+        with:
+          path: manifest
+          
       - name: Import repositories
         run: |
           mkdir -p outputs/repo
           ostree init --mode=archive-z2 --repo=outputs/repo
+          cp -v $(find manifest -maxdepth 1 -type f) outputs/
 
           for ARCH in x86_64 aarch64; do
             mkdir repo-${ARCH}
