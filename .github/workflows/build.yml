@@ -101,7 +101,7 @@ jobs:
       - name: Install ostree tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ostree
+          sudo apt-get install -y --no-install-recommends ostree flatpak
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -123,7 +123,10 @@ jobs:
           for ARCH in x86_64 aarch64; do
             mkdir repo-${ARCH}
             tar xf artifacts/mozillavpn-repo-${ARCH}.tar.xz -C repo-${ARCH} --strip-components=1
-            ostree pull-local --repo=outputs/repo repo-${ARCH} $(ostree refs --repo=repo-${ARCH})
+
+            for REF in $(ostree refs --repo=repo-${ARCH}); do
+                flatpak build-commit-from --src-repo=repo-${ARCH} --src-ref=${REF} outputs/repo ${REF}
+            done
           done
 
       - name: Upload artifact
