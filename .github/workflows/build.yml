@@ -65,12 +65,10 @@ jobs:
           GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
           GNUPGHOME: ${{ runner.temp }}/gnupg-data
         run: |
-          mkdir -m700 $GNUPGHOME
+          mkdir -m700 ${GNUPGHOME}
           echo "$GPG_SIGNING_KEY" | gpg --import --batch
-          KEYID=$(gpg --with-colons --list-keys | grep -m1 '^fpr:' | tr -d [fpr:])
-          KEYGRIP=$(gpg --with-colons --with-keygrip --list-keys | grep -m1 '^grp:' | tr -d [grp:])
-
-          echo "keyid=$KEYID" >> $GITHUB_OUTPUT
+          echo "keyid=$(gpg --with-colons --list-keys | grep -m1 '^fpr:' | tr -d [fpr:])" >> $GITHUB_OUTPUT
+          echo "GNUPGHOME=${GNUPGHOME}" >> $GITHUB_ENV
 
       - name: Build
         uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
@@ -113,8 +111,6 @@ jobs:
 
       - name: Import repositories
         run: |
-          find $(pwd)
-
           mkdir -p outputs/repo
           ostree init --mode=archive-z2 --repo=outputs/repo
 
