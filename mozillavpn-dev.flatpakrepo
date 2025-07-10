@@ -1,6 +1,6 @@
 [Flatpak Repo]
 Title=Mozilla VPN Development Builds
-Url=https://oskirby.github.io/flathub/mozillavpn-dev.flatpakrepo
+Url=https://oskirby.github.io/flathub/repo
 Homepage=https://vpn.mozilla.org
 Comment=Mozilla VPN flatpak repository for automated builds off main
 Description=Mozilla VPN flatpak repository for automated builds off main
