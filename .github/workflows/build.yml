@@ -37,7 +37,6 @@ jobs:
 
   build:
     name: "Build Flatpak"
-    environment: ${{ github.event_name == 'push' && 'github-pages' || '' }}
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.9
       options: --privileged
@@ -57,26 +56,12 @@ jobs:
         with:
           submodules: true
 
-      - name: Import signing keys
-        if: ${{ github.event_name == 'push' }}
-        id: keys
-        shell: bash
-        env:
-          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
-          GNUPGHOME: ${{ runner.temp }}/gnupg-data
-        run: |
-          mkdir -m700 ${GNUPGHOME}
-          echo "$GPG_SIGNING_KEY" | gpg --import --batch
-          echo "keyid=$(gpg --with-colons --list-keys | grep -m1 '^fpr:' | tr -d [fpr:])" >> $GITHUB_OUTPUT
-          echo "GNUPGHOME=${GNUPGHOME}" >> $GITHUB_ENV
-
       - name: Build
         uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
         with:
           bundle: mozillavpn.flatpak
           manifest-path: org.mozilla.vpn.yml
           arch: ${{ matrix.variant.arch }}
-          gpg-sign: ${{ steps.keys.outputs.keyid }}
           cache-key: flatpak-builder-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
 
       - name: Compress repository
@@ -93,15 +78,35 @@ jobs:
         continue-on-error: true
         run: flatpak-builder-lint builddir flatpak_app
 
-  build-repository:
-    name: "Build repository"
+  deploy:
+    name: "Deploy repository"
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+
     steps:
-      - name: Install ostree tools
+      - name: Install tools
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ostree flatpak
+
+      - name: Import signing keys
+        id: keys
+        shell: bash
+        env:
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+          GNUPGHOME: ${{ runner.temp }}/gnupg-data
+        run: |
+          mkdir -m700 ${GNUPGHOME}
+          echo "$GPG_SIGNING_KEY" | gpg --import --batch
+          echo "keyid=$(gpg --with-colons --list-keys | grep -m1 '^fpr:' | tr -d [fpr:])" >> $GITHUB_OUTPUT
+          echo "GNUPGHOME=${GNUPGHOME}" >> $GITHUB_ENV
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -125,7 +130,9 @@ jobs:
             tar xf artifacts/mozillavpn-repo-${ARCH}.tar.xz -C repo-${ARCH} --strip-components=1
 
             for REF in $(ostree refs --repo=repo-${ARCH}); do
-                flatpak build-commit-from --src-repo=repo-${ARCH} --src-ref=${REF} outputs/repo ${REF}
+                flatpak build-commit-from outputs/repo ${REF} \
+                    --gpg-sign=${{ steps.keys.outputs.keyid }} \
+                    --src-repo=repo-${ARCH} --src-ref=${REF}
             done
           done
 
@@ -134,19 +141,6 @@ jobs:
         with:
           path: outputs
 
-  deploy-repository:
-    name: "Deploy repository"
-    needs: build-repository
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' }}
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    permissions:
-      pages: write
-      id-token: write
-
-    steps:
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
         id: deployment
