@@ -64,15 +64,15 @@ jobs:
           arch: ${{ matrix.variant.arch }}
           cache-key: flatpak-builder-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
 
-      - name: Compress repository
-        run: tar -cJf mozillavpn-repo-${{ matrix.variant.arch }}.tar.xz repo
+      - name: Compress build artifacts
+        run: tar -cJf mozillavpn-build-${{ matrix.variant.arch }}.tar.xz flatpak_app
 
-      - name: Upload repository
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mozillavpn-repo-${{ matrix.variant.arch }}
+          name: mozillavpn-build-${{ matrix.variant.arch }}
           compression-level: 0
-          path: mozillavpn-repo-${{ matrix.variant.arch }}.tar.xz
+          path: mozillavpn-build-${{ matrix.variant.arch }}.tar.xz
 
       - name: Run builddir linters
         continue-on-error: true
@@ -119,7 +119,7 @@ jobs:
         with:
           path: manifest
           
-      - name: Import repositories
+      - name: Import packages
         run: |
           mkdir -p outputs/repo
           ostree init --mode=archive-z2 --repo=outputs/repo
@@ -127,12 +127,10 @@ jobs:
 
           for ARCH in x86_64 aarch64; do
             mkdir repo-${ARCH}
-            tar xf artifacts/mozillavpn-repo-${ARCH}.tar.xz -C repo-${ARCH} --strip-components=1
+            tar xf artifacts/mozillavpn-build-${ARCH}.tar.xz -C build-${ARCH} --strip-components=1
 
-            for REF in $(ostree refs --repo=repo-${ARCH}); do
-                flatpak build-commit-from outputs/repo ${REF} \
-                    --gpg-sign=${{ steps.keys.outputs.keyid }} \
-                    --src-repo=repo-${ARCH} --src-ref=${REF}
+            flatpak build-export outputs/repo build-${ARCH}
+              --gpg-sign=${{ steps.keys.outputs.keyid }}
             done
           done
 
