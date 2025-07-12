@@ -55,22 +55,49 @@ jobs:
         with:
           path: manifest
 
+      - name: Cache runtimes
+        id: cache-runtime
+        uses: actions/cache@v4
+        with:
+          path: flathub-runtime
+          key: flathub-runtime-6.9
+
+      - name: Download runtimes
+        if: steps.cache-runtime.outputs.cache-hit != 'true'
+        run: |
+          mkdir flathub-runtime
+          ostree init --mode=archive-z2 --repo=flathub-runtime
+
+          curl -sSL -o flathub.flatpakrepo https://flathub.org/repo/flathub.flatpakrepo
+          ostree remote add --repo=flathub-runtime flathub $(sed -n 's/^Url=//p' flathub.flatpakrepo)
+          ostree remote gpg-import --stdin --repo=flathub-runtime flathub <<< $(sed -n 's/GPGKey//p' flathub.flatpakrepo | base64 -d)
+
+          ostree pull --repo=flathub-runtime flathub runtime/org.kde.Platform/x86_64/6.9
+          ostree pull --repo=flathub-runtime flathub runtime/org.kde.Platform/aarch64/6.9
+
       - name: Import repositories
         run: |
           mkdir -p outputs/repo
           ostree init --mode=archive-z2 --repo=outputs/repo
           cp -v $(find manifest -maxdepth 1 -type f) outputs/
 
-          for ARCH in x86_64 aarch64; do
-            mkdir repo-${ARCH}
-            tar xf artifacts/mozillavpn-repo-${ARCH}.tar.xz -C repo-${ARCH} --strip-components=1
+          for REF in $(ostree refs --repo=flathub-runtime); do
+            flatpak build-commit-from outputs/repo ${REF} \
+              --gpg-sign=${GPG_KEYID} \
+              --gpg-homedir=${GNUPGHOME} \
+              --src-repo=flathub-runtime --src-ref=${REF}
+          done
 
-            for REF in $(ostree refs --repo=repo-${ARCH}); do
+          for ARCH in x86_64 aarch64; do
+            mkdir build-${ARCH}
+            tar xf artifacts/mozillavpn-repo-${ARCH}.tar.xz -C build-${ARCH} --strip-components=1
+
+            for REF in $(ostree refs --repo=build-${ARCH}); do
                 flatpak build-commit-from outputs/repo ${REF} \
                     --update-appstream \
                     --gpg-sign=${GPG_KEYID} \
                     --gpg-homedir=${GNUPGHOME} \
-                    --src-repo=repo-${ARCH} --src-ref=${REF}
+                    --src-repo=build-${ARCH} --src-ref=${REF}
             done
           done
 
