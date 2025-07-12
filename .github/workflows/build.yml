@@ -30,7 +30,7 @@ jobs:
           submodules: true
 
       - name: Run manifest linters
-        run: flatpak-builder-lint --exceptions --user-exceptions .github/linter-exceptions.json manifest org.mozilla.vpn.yml
+        run: flatpak-builder-lint --exceptions --user-exceptions linter-exceptions.json manifest org.mozilla.vpn.yml
 
       - name: Run Appstream linters
         run: flatpak-builder-lint appstream org.mozilla.vpn.metainfo.xml
@@ -77,68 +77,3 @@ jobs:
       - name: Run builddir linters
         continue-on-error: true
         run: flatpak-builder-lint builddir flatpak_app
-
-  deploy:
-    name: "Deploy repository"
-    if: ${{ github.event_name == 'push' }}
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    permissions:
-      pages: write
-      id-token: write
-
-    steps:
-      - name: Install tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ostree flatpak
-
-      - name: Import signing keys
-        id: keys
-        shell: bash
-        env:
-          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
-          GNUPGHOME: ${{ runner.temp }}/gnupg-data
-        run: |
-          mkdir -m700 ${GNUPGHOME}
-          echo "$GPG_SIGNING_KEY" | gpg --import --batch
-          echo "keyid=$(gpg --with-colons --list-keys | grep -m1 '^fpr:' | tr -d [fpr:])" >> $GITHUB_OUTPUT
-          echo "GNUPGHOME=${GNUPGHOME}" >> $GITHUB_ENV
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Checkout manifest
-        uses: actions/checkout@v4
-        with:
-          path: manifest
-          
-      - name: Import packages
-        run: |
-          mkdir -p outputs/repo
-          ostree init --mode=archive-z2 --repo=outputs/repo
-          cp -v $(find manifest -maxdepth 1 -type f) outputs/
-
-          for ARCH in x86_64 aarch64; do
-            mkdir repo-${ARCH}
-            tar xf artifacts/mozillavpn-build-${ARCH}.tar.xz -C build-${ARCH} --strip-components=1
-
-            flatpak build-export outputs/repo build-${ARCH}
-              --gpg-sign=${{ steps.keys.outputs.keyid }}
-            done
-          done
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: outputs
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
-        id: deployment

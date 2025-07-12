@@ -13,11 +13,13 @@ finish-args:
   - --device=dri
   - --talk-name=org.kde.StatusNotifierWatcher
   - --system-talk-name=org.freedesktop.NetworkManager
-  - --env=QML2_IMPORT_PATH=/app/lib64/qml:/app/lib/qml:/app/qml
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
-  env:
-    - CARGO_HOME=/run/build/rust-flatpak/cargo
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /share/man
+  - /share/doc
 modules:
   # Dependency for jsonschema and glean-parser, needs to be installed as a
   # binary wheel because it has a bunch of complex rust dependencies that are
@@ -44,13 +46,14 @@ modules:
     buildsystem: autotools
     cleanup:
       - /bin
-      - /include
-      - /lib/pkgconfig
-      - /share/man
     sources:
-      - type: archive
-        url: https://github.com/jpirko/libndp/archive/v1.9.tar.gz
-        sha256: e564f5914a6b1b799c3afa64c258824a801c1b79a29e2fe6525b682249c65261
+      - type: git
+        url: https://github.com/jpirko/libndp.git
+        tag: v1.9
+        commit: 2730638bf88984b09531813974f9bd14e1a50165
+        x-checker-data:
+          type: git
+          tag-pattern: ^v([\d.]+)$
 
   - name: NetworkManager
     buildsystem: meson
@@ -73,6 +76,7 @@ modules:
       - -Dovs=false
       - -Dnmcli=false
       - -Dnmtui=false
+      - -Dnm_cloud_setup=false
       - -Dintrospection=true
       - -Dvapi=false
       - -Ddocs=false
@@ -84,17 +88,17 @@ modules:
     cleanup:
       - /sbin
       - /etc
-      - /include
-      - /lib/pkgconfig
       - /libexec
       - /var
       - /share/bash-completion
-      - /share/doc
     sources:
       - type: git
         url: https://gitlab.freedesktop.org/NetworkManager/NetworkManager.git
-        tag: 1.40.18
-        commit: 2db3748ec8162ce948ba52f71b42a258ff8d64ba
+        tag: 1.52.1
+        commit: 826e37b175368a9ce761a575adec520b83958742
+        x-checker-data:
+          type: git
+          tag-pattern: ^([\d.]+)$
 
   - name: qt5compat
     buildsystem: cmake-ninja
@@ -102,17 +106,6 @@ modules:
       - type: git
         tag: v6.9.0
         url: https://github.com/qt/qt5compat
-
-  - name: mozillavpn-appstream
-    buildsystem: simple
-    build-commands:
-      - install -Dm644 org.mozilla.vpn.metainfo.xml "${FLATPAK_DEST}/share/metainfo/${FLATPAK_ID}.metainfo.xml"
-      - install -Dm644 org.mozilla.vpn.releases.xml "${FLATPAK_DEST}/share/metainfo/${FLATPAK_ID}.releases.xml"
-    sources:
-      - type: file
-        path: org.mozilla.vpn.metainfo.xml
-      - type: file
-        path: org.mozilla.vpn.releases.xml
 
   - name: mozillavpn
     buildsystem: cmake-ninja
@@ -127,6 +120,11 @@ modules:
           type: json
           url: https://api.github.com/repos/mozilla-mobile/mozilla-vpn-client/branches/main
           commit-query: .commit.sha
+
+      - type: file
+        path: org.mozilla.vpn.releases.xml
+        dest: linux/extra
+        dest-filename: org.mozilla.vpn.releases.xml.in
 
       # Install vendored Rust crates
       - flatpak-vpn-crates.json

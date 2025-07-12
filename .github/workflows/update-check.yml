@@ -67,13 +67,20 @@ jobs:
           repository: flatpak/flatpak-builder-tools
           ref: master
 
+      - name: Fetch latest release details
+        if: steps.check-updates.outputs.upstream == 'true'
+        run: |
+          curl -sSL -o org.mozilla.vpn.releases.xml \
+            https://mozilla.github.io/mozillavpn-product-details/org.mozilla.vpn.releases.xml
+
       - name: Update dependencies
         if: steps.check-updates.outputs.upstream == 'true'
         run: |
           python tools/cargo/flatpak-cargo-generator.py -o flatpak-vpn-crates.json upstream/Cargo.lock
           python tools/pip/flatpak-pip-generator.py -o flatpak-glean-parser.yaml --yaml --build-only $(cat upstream/requirements.in | grep ^glean-parser)
 
-      - uses: docker://ghcr.io/flathub/flatpak-external-data-checker:latest
+      - name: Create pull request
+        uses: docker://ghcr.io/flathub/flatpak-external-data-checker:latest
         if: steps.check-updates.outputs.updates == 'true'
         env:
           GIT_AUTHOR_NAME: Flatpak External Data Checker
