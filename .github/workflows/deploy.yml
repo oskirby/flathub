@@ -54,21 +54,24 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: manifest
-          
-      - name: Import packages
+
+      - name: Import repositories
         run: |
           mkdir -p outputs/repo
           ostree init --mode=archive-z2 --repo=outputs/repo
           cp -v $(find manifest -maxdepth 1 -type f) outputs/
 
           for ARCH in x86_64 aarch64; do
-            mkdir build-${ARCH}
-            tar xf artifacts/mozillavpn-build-${ARCH}.tar.xz -C build-${ARCH} --strip-components=1
+            mkdir repo-${ARCH}
+            tar xf artifacts/mozillavpn-repo-${ARCH}.tar.xz -C repo-${ARCH} --strip-components=1
 
-            flatpak build-export outputs/repo build-${ARCH} \
-              --arch ${ARCH} \
-              --update-appstream \
-              --gpg-sign=${{ steps.keys.outputs.keyid }}
+            for REF in $(ostree refs --repo=repo-${ARCH}); do
+                flatpak build-commit-from outputs/repo ${REF} \
+                    --update-appstream \
+                    --gpg-sign=${GPG_KEYID} \
+                    --gpg-homedir=${GNUPGHOME} \
+                    --src-repo=repo-${ARCH} --src-ref=${REF}
+            done
           done
 
       - name: Upload artifact
