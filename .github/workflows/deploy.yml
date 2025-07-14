@@ -70,7 +70,7 @@ jobs:
 
           curl -sSL -o flathub.flatpakrepo https://flathub.org/repo/flathub.flatpakrepo
           ostree remote add --repo=flathub-runtime flathub $(sed -n 's/^Url=//p' flathub.flatpakrepo)
-          ostree remote gpg-import --stdin --repo=flathub-runtime flathub <<< $(sed -n 's/GPGKey//p' flathub.flatpakrepo | base64 -d)
+          sed -n 's/^GPGKey=//p' flathub.flatpakrepo | base64 -d | ostree remote gpg-import --stdin --repo=flathub-runtime flathub
 
           ostree pull --repo=flathub-runtime flathub runtime/org.kde.Platform/x86_64/6.9
           ostree pull --repo=flathub-runtime flathub runtime/org.kde.Platform/aarch64/6.9
