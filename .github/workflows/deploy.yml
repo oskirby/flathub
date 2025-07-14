@@ -55,38 +55,11 @@ jobs:
         with:
           path: manifest
 
-      - name: Cache runtimes
-        id: cache-runtime
-        uses: actions/cache@v4
-        with:
-          path: flathub-runtime
-          key: flathub-runtime-6.9
-
-      - name: Download runtimes
-        if: steps.cache-runtime.outputs.cache-hit != 'true'
-        run: |
-          mkdir flathub-runtime
-          ostree init --mode=archive-z2 --repo=flathub-runtime
-
-          curl -sSL -o flathub.flatpakrepo https://flathub.org/repo/flathub.flatpakrepo
-          ostree remote add --repo=flathub-runtime flathub $(sed -n 's/^Url=//p' flathub.flatpakrepo)
-          sed -n 's/^GPGKey=//p' flathub.flatpakrepo | base64 -d | ostree remote gpg-import --stdin --repo=flathub-runtime flathub
-
-          ostree pull --repo=flathub-runtime flathub runtime/org.kde.Platform/x86_64/6.9
-          ostree pull --repo=flathub-runtime flathub runtime/org.kde.Platform/aarch64/6.9
-
       - name: Import repositories
         run: |
           mkdir -p outputs/repo
           ostree init --mode=archive-z2 --repo=outputs/repo
           cp -v $(find manifest -maxdepth 1 -type f) outputs/
-
-          for REF in $(ostree refs --repo=flathub-runtime); do
-            flatpak build-commit-from outputs/repo ${REF} \
-              --gpg-sign=${GPG_KEYID} \
-              --gpg-homedir=${GNUPGHOME} \
-              --src-repo=flathub-runtime --src-ref=${REF}
-          done
 
           for ARCH in x86_64 aarch64; do
             mkdir build-${ARCH}
