@@ -55,12 +55,22 @@ jobs:
         with:
           path: manifest
 
-      - name: Import repositories
+      - name: Setup ostree repository
         run: |
           mkdir -p outputs/repo
           ostree init --mode=archive-z2 --repo=outputs/repo
+
+          curl -o flathub.flatpakrepo https://dl.flathub.org/repo/flathub.flatpakrepo
+          FLATHUB_URL=$(sed -n 's/^Url=//p' flathub.flatpakrepo)
+          FLATHUB_GPGKEY=$(sed -n 's/^GPGKey=//p' flathub.flatpakrepo)
+
+          ostree remote add --repo=outputs/repo flathub ${FLATHUB_URL} --collection-id=org.flathub.Stable
+          echo "${FLATHUB_GPGKEY}" | base64 -d | ostree remote gpg-import --repo=outputs/repo --stdin flathub
+
           cp -v $(find manifest -maxdepth 1 -type f) outputs/
 
+      - name: Import builds
+        run: |
           for ARCH in x86_64 aarch64; do
             mkdir build-${ARCH}
             tar xf artifacts/mozillavpn-repo-${ARCH}.tar.xz -C build-${ARCH} --strip-components=1

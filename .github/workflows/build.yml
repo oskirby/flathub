@@ -65,17 +65,6 @@ jobs:
         continue-on-error: true
         run: flatpak-builder-lint builddir flatpak_app
 
-      - name: Download runtimes
-        if: github.event_name == 'push'
-        working-directory: repo
-        run: |
-          curl -sSL -o flathub.flatpakrepo https://flathub.org/repo/flathub.flatpakrepo
-          sed -n 's/^GPGKey=//p' flathub.flatpakrepo | base64 -d > flathub.gpg
-
-          ostree remote add flathub $(sed -n 's/^Url=//p' flathub.flatpakrepo)          
-          cat flathub.gpg | ostree remote gpg-import --stdin flathub
-          ostree pull flathub runtime/org.kde.Platform/${{ matrix.variant.arch }}/6.9
-
       - name: Compress repository
         run: tar -cJf mozillavpn-repo-${{ matrix.variant.arch }}.tar.xz repo
 
