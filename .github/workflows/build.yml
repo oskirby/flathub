@@ -69,11 +69,11 @@ jobs:
         if: github.event_name == 'push'
         working-directory: repo
         run: |
-          curl -sSL -o ${{ github.workspace }}/flathub.flatpakrepo https://flathub.org/repo/flathub.flatpakrepo
-          sed -n 's/^GPGKey=//p' ${{ github.workspace }}/flathub.flatpakrepo | base64 -d > ${{ github.workspace }}/flathub.gpg
+          curl -sSL -o flathub.flatpakrepo https://flathub.org/repo/flathub.flatpakrepo
+          sed -n 's/^GPGKey=//p' flathub.flatpakrepo | base64 -d > flathub.gpg
 
-          ostree remote add flathub $(sed -n 's/^Url=//p' ${{ github.workspace }}/flathub.flatpakrepo)          
-          ${{ github.workspace }}/flathub.gpg | ostree remote gpg-import --stdin flathub
+          ostree remote add flathub $(sed -n 's/^Url=//p' flathub.flatpakrepo)          
+          cat flathub.gpg | ostree remote gpg-import --stdin flathub
           ostree pull flathub runtime/org.kde.Platform/${{ matrix.variant.arch }}/6.9
 
       - name: Compress repository
