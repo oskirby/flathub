@@ -94,8 +94,8 @@ modules:
     sources:
       - type: git
         url: https://gitlab.freedesktop.org/NetworkManager/NetworkManager.git
-        tag: 1.52.1
-        commit: 826e37b175368a9ce761a575adec520b83958742
+        tag: 1.56.0
+        commit: 56b51b98fbb8627c4c09a483702e18fd8aee7ce1
         x-checker-data:
           type: git
           tag-pattern: ^([\d.]+)$
@@ -115,7 +115,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/mozilla-mobile/mozilla-vpn-client
-        commit: 1f395d44e657d4c120c22a27182b59dda16946ef
+        commit: 2d4aab02ca47c182d94d95ec535e552aa6a72b9f
         x-checker-data:
           type: json
           url: https://api.github.com/repos/mozilla-mobile/mozilla-vpn-client/branches/main
